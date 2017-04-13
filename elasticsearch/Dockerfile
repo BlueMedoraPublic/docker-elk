@@ -1,5 +1,5 @@
-# https://github.com/elastic/elasticsearch-docker
-FROM docker.elastic.co/elasticsearch/elasticsearch:5.3.0
+FROM elasticsearch:5-alpine 
+ADD config/elasticsearch.yml /etc/elasticsearch/
+ENV ES_JAVA_OPTS="-Des.path.conf=/etc/elasticsearch"
 
-# Add your elasticsearch plugins setup here
-# Example: RUN elasticsearch-plugin install analysis-icu
+CMD ["-E", "discovery.zen.minimum_master_nodes=1"]

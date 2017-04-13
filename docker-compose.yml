@@ -1,50 +1,55 @@
 version: '2'
 
 services:
-
   elasticsearch:
-    build: elasticsearch/
+    build: ./elasticsearch/
     ports:
       - "9200:9200"
       - "9300:9300"
     environment:
-      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
-      # disable X-Pack
-      # see https://www.elastic.co/guide/en/x-pack/current/xpack-settings.html
-      #     https://www.elastic.co/guide/en/x-pack/current/installing-xpack.html#xpack-enabling
-      xpack.security.enabled: "false"
-      xpack.monitoring.enabled: "false"
-      xpack.graph.enabled: "false"
-      xpack.watcher.enabled: "false"
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - bootstrap.memory_lock=true
+      - cluster.name=elktest
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    cap_add:
+      - IPC_LOCK
     networks:
-      - elk
-
+      - docker_elk
+    labels:
+      io.rancher.scheduler.affinity:host_label: region=us-east-1
   logstash:
-    build: logstash/
-    volumes:
-      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
-      - ./logstash/pipeline:/usr/share/logstash/pipeline
+    build: ./logstash
+    command: -f /etc/logstash/conf.d/
     ports:
       - "5000:5000"
-    environment:
-      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+      - "5010:5010"
+      - "5044:5044"
+      - "1514:1514"
     networks:
-      - elk
+      - docker_elk
     depends_on:
       - elasticsearch
-
+    labels:
+      io.rancher.scheduler.affinity:host_label: region=us-east-1
   kibana:
-    build: kibana/
-    volumes:
-      - ./kibana/config/:/usr/share/kibana/config
+    build: ./kibana
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
     ports:
       - "5601:5601"
     networks:
-      - elk
+      - docker_elk
     depends_on:
       - elasticsearch
+    labels:
+       io.rancher.scheduler.affinity:host_label: region=us-east-1
 
 networks:
-
-  elk:
-    driver: bridge
+  docker_elk:
+    driver: overlay
